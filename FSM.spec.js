@@ -10,6 +10,30 @@ test('it should throw if argument "transitions" is missing', () => {
     expect(getError).toThrowError('missing argument: "transitions"');
 });
 
+test('it should allow a state string in the constructor', () => {
+    const initialState = 'a:one|b:one';
+    const transitions = {
+        a1: { from: { a: ['two', 'three'], b: ['one', 'two', 'three'] }, to: { a: 'one' } },
+        a2: { from: { a: ['one', 'three'], b: ['one', 'two', 'three'] }, to: { a: 'two' } },
+    };
+
+    const fsm = new FSM({ initialState, transitions });
+    expect(fsm).toHaveProperty('a1');
+    expect(fsm).toHaveProperty('a2');
+});
+
+test('it should allow a state object in the constructor', () => {
+    const initialState = { a: 'one', b: 'one' };
+    const transitions = {
+        a1: { from: { a: ['two', 'three'], b: ['one', 'two', 'three'] }, to: { a: 'one' } },
+        a2: { from: { a: ['one', 'three'], b: ['one', 'two', 'three'] }, to: { a: 'two' } },
+    };
+
+    const fsm = new FSM({ initialState, transitions });
+    expect(fsm).toHaveProperty('a1');
+    expect(fsm).toHaveProperty('a2');
+});
+
 test('it should generate a state-string from a state-object', () => {
     const stateString = FSM.fromObjectToString({ a: 'foo', b: 'bar' });
     expect(stateString).toEqual('a:foo|b:bar');

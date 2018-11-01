@@ -2,9 +2,9 @@ const FSM = class {
     constructor({ initialState, transitions } = {}) {
         if (!initialState) throw new Error('missing argument: "initialState"');
         if (!transitions) throw new Error('missing argument: "transitions"');
-        this.initialState = initialState;
+        this.initialState = typeof initialState === 'string' ? initialState : FSM.fromObjectToString(initialState);
         this.transitions = transitions;
-        this.state = initialState;
+        this.state = this.initialState;
         this.buildTransitions();
     }
 
