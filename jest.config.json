@@ -1,0 +1,8 @@
+{
+  "bail": true,
+  "verbose": true,
+  "collectCoverage": true,
+  "collectCoverageFrom" : ["index.js"],
+  "coverageDirectory": "./__coverage__",
+  "testEnvironment": "node"
+}
