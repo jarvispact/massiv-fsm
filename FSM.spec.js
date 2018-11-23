@@ -39,19 +39,30 @@ test('it should generate a state-string from a state-object', () => {
     expect(stateString).toEqual('a:foo|b:bar');
 });
 
+test('it should sort the state-object before converting it to a state-string', () => {
+    const stateString = FSM.fromObjectToString({ b: 'bar', a: 'foo' });
+    expect(stateString).toEqual('a:foo|b:bar');
+});
+
 test('it should be able to handle a undefined', () => {
     const stateString = FSM.fromObjectToString(undefined);
-    expect(stateString).toEqual('');
+    expect(stateString).toEqual(undefined);
 });
 
 test('it should generate a state-object from a state-string', () => {
-    const stateString = FSM.fromStringToObject('a:foo|b:bar');
-    expect(stateString).toEqual({ a: 'foo', b: 'bar' });
+    const stateObject = FSM.fromStringToObject('a:foo|b:bar');
+    expect(stateObject).toEqual({ a: 'foo', b: 'bar' });
+});
+
+test('it should sort the state-string before converting it to a state-object', () => {
+    const stateObject = FSM.fromStringToObject('b:bar|a:foo');
+    const keys = Object.keys(stateObject);
+    expect(keys).toEqual(['a', 'b']);
 });
 
 test('it should be able to handle a undefined', () => {
-    const stateString = FSM.fromStringToObject(undefined);
-    expect(stateString).toEqual({ '': undefined });
+    const stateObject = FSM.fromStringToObject(undefined);
+    expect(stateObject).toEqual(undefined);
 });
 
 test('it should build the transition functions on instantiation of the FSM', () => {

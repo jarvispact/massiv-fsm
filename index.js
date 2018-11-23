@@ -8,14 +8,16 @@ const FSM = class {
         this.buildTransitions();
     }
 
-    static fromObjectToString(object = {}) {
+    static fromObjectToString(object) {
+        if (!object) return undefined;
         const entries = Object.entries(object);
-        const stringPairs = entries.map(([key, value]) => `${key}:${value}`);
+        const stringPairs = entries.map(([key, value]) => `${key}:${value}`).sort();
         return stringPairs.join('|');
     }
 
-    static fromStringToObject(string = '') {
-        const keyValuePairs = string.split('|');
+    static fromStringToObject(string) {
+        if (!string) return undefined;
+        const keyValuePairs = string.split('|').sort();
         return keyValuePairs.reduce((acc, keyValuePair) => {
             const [key, value] = keyValuePair.split(':');
             acc[key] = value;
