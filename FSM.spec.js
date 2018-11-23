@@ -172,3 +172,34 @@ test('it should be able to call multiple transitions on the same fsm instance', 
     expect(so4).toEqual({ a: 'one', b: 'one' });
     expect(fsm.state).toEqual('a:one|b:one');
 });
+
+test('it should also work with simple states', () => {
+    const initialState = 'none';
+    const transitions = {
+        create: { from: ['none', 'created'], to: 'created' },
+        delete: { from: ['created', 'deleted'], to: 'deleted' },
+    };
+
+    const fsm = new FSM({ initialState, transitions });
+    expect(fsm).toHaveProperty('create');
+    expect(fsm).toHaveProperty('delete');
+
+    const { error: deleteError, state: deleteState, stateObject: deleteStateObject } = fsm.delete();
+    expect(deleteError).toBeDefined();
+    expect(deleteError.message).toEqual('invalid transition: "delete" in state: "none"');
+    expect(deleteState).toEqual('none');
+    expect(deleteStateObject).toBeUndefined();
+    expect(fsm.state).toEqual('none');
+
+    const { error: createError, state: createState, stateObject: createStateObject } = fsm.create();
+    expect(createError).toBeNull();
+    expect(createState).toEqual('created');
+    expect(createStateObject).toBeUndefined();
+    expect(fsm.state).toEqual('created');
+
+    const { error: deleteError2, state: deleteState2, stateObject: deleteStateObject2 } = fsm.delete();
+    expect(deleteError2).toBeNull();
+    expect(deleteState2).toEqual('deleted');
+    expect(deleteStateObject2).toBeUndefined();
+    expect(fsm.state).toEqual('deleted');
+});
