@@ -2,8 +2,9 @@
     "extends": "airbnb-base",
     "env": {
       "node": true,
-      "jest": true,
-      "es6": true
+      "mocha": true,
+      "es6": true,
+      "browser": true
     },
     "rules": {
       "indent": ["error", 4],
@@ -12,7 +13,8 @@
       "arrow-parens": "off",
       "object-curly-newline": "off",
       "newline-per-chained-call": "off",
-      "consistent-return": "off",
-      "import/no-extraneous-dependencies": ["error", {"devDependencies": ["**/*.specs.js"]}]
+      "import/no-extraneous-dependencies": ["error", {
+        "devDependencies": ["./specs/**/*.specs.js", "rollup.config.js"]
+      }]
     }
 }

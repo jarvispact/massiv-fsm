@@ -2,9 +2,14 @@
   "name": "massiv-fsm",
   "version": "0.0.2",
   "description": "a simple fsm implementation",
-  "main": "index.js",
+  "main": "dist/massiv-fsm.cjs.js",
+  "module": "dist/massiv-fsm.esm.js",
+  "browser": "dist/massiv-fsm.umd.js",
   "scripts": {
-    "test": "jest --config=jest.config.json"
+    "test": "mocha --require @babel/register --timeout 10000 ./specs/**/*.specs.js",
+    "clean": "rm -rf ./dist/*",
+    "build": "rollup -c",
+    "git-add-dist": "git add ./dist/*"
   },
   "repository": {
     "type": "git",
@@ -19,11 +24,23 @@
   "bugs": {
     "url": "https://github.com/jarvispact/massiv-fsm/issues"
   },
+  "pre-commit": [
+    "clean",
+    "build",
+    "git-add-dist"
+  ],
   "homepage": "https://github.com/jarvispact/massiv-fsm#readme",
   "devDependencies": {
-    "eslint": "^5.7.0",
-    "eslint-config-airbnb-base": "^13.1.0",
-    "eslint-plugin-import": "^2.14.0",
-    "jest": "^23.6.0"
+    "@babel/core": "^7.7.0",
+    "@babel/preset-env": "^7.7.1",
+    "@babel/register": "^7.7.0",
+    "chai": "^4.2.0",
+    "eslint": "^6.1.0",
+    "eslint-config-airbnb-base": "^14.0.0",
+    "eslint-plugin-import": "^2.18.2",
+    "mocha": "^6.2.2",
+    "pre-commit": "^1.2.2",
+    "rollup": "^1.26.3",
+    "rollup-plugin-node-resolve": "^5.2.0"
   }
 }
