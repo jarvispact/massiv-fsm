@@ -1,134 +1,77 @@
 /* eslint-disable no-unused-expressions */
 import { expect } from 'chai';
 import FSM from '../src/fsm';
+import { createTrafficLightMachine, createVendorMachine, createFormMachine, sleep } from './helper';
 
 describe('FSM', () => {
     describe('traffic light', () => {
-        const createTrafficLight = (initialState) => new FSM({
-            initialState,
-            transitions: {
-                GREEN: {
-                    from: ['red'],
-                    to: 'green',
-                },
-                YELLOW: {
-                    from: ['green'],
-                    to: 'yellow',
-                },
-                RED: {
-                    from: ['yellow'],
-                    to: 'red',
-                },
-            },
-        });
-
         describe('in state: "red" the "can" function', () => {
             it('should return false for transition "RED"', () => {
-                expect(createTrafficLight('red').can('RED')).to.equal(false);
+                expect(createTrafficLightMachine('red').can('RED')).to.equal(false);
             });
 
             it('should return false for transition "YELLOW"', () => {
-                expect(createTrafficLight('red').can('YELLOW')).to.equal(false);
+                expect(createTrafficLightMachine('red').can('YELLOW')).to.equal(false);
             });
 
             it('should return false for transition "GREEN"', () => {
-                expect(createTrafficLight('red').can('GREEN')).to.equal(true);
+                expect(createTrafficLightMachine('red').can('GREEN')).to.equal(true);
             });
         });
 
         describe('in state: "yellow" the "can" function', () => {
             it('should return false for transition "RED"', () => {
-                expect(createTrafficLight('yellow').can('RED')).to.equal(true);
+                expect(createTrafficLightMachine('yellow').can('RED')).to.equal(true);
             });
 
             it('should return false for transition "YELLOW"', () => {
-                expect(createTrafficLight('yellow').can('YELLOW')).to.equal(false);
+                expect(createTrafficLightMachine('yellow').can('YELLOW')).to.equal(false);
             });
 
             it('should return false for transition "GREEN"', () => {
-                expect(createTrafficLight('yellow').can('GREEN')).to.equal(false);
+                expect(createTrafficLightMachine('yellow').can('GREEN')).to.equal(false);
             });
         });
 
         describe('in state: "green" the "can" function', () => {
             it('should return false for transition "RED"', () => {
-                expect(createTrafficLight('green').can('RED')).to.equal(false);
+                expect(createTrafficLightMachine('green').can('RED')).to.equal(false);
             });
 
             it('should return false for transition "YELLOW"', () => {
-                expect(createTrafficLight('green').can('YELLOW')).to.equal(true);
+                expect(createTrafficLightMachine('green').can('YELLOW')).to.equal(true);
             });
 
             it('should return false for transition "GREEN"', () => {
-                expect(createTrafficLight('green').can('GREEN')).to.equal(false);
+                expect(createTrafficLightMachine('green').can('GREEN')).to.equal(false);
             });
         });
     });
 
     describe('vending machine', () => {
-        const initialContext = { credit: 0 };
-
-        const contextReducer = (currentContext = initialContext, { transition, data }) => {
-            switch (transition) {
-            case 'INSERTMONEY':
-                return { ...currentContext, credit: currentContext.credit + data.money };
-            default:
-                return currentContext;
-            }
-        };
-
-        const passIfCreditIs1OrHigher = (context = {}) => {
-            if (context.credit >= 1) return true;
-            return new Error('you have not enough credit');
-        };
-
-        const createVendingMachine = (initialState, context, guards) => new FSM({
-            initialState,
-            transitions: {
-                INSERTMONEY: {
-                    from: ['idle', 'buying'],
-                    to: 'buying',
-                },
-                RESET: {
-                    from: ['idle', 'buying'],
-                    to: 'idle',
-                },
-                BUY: {
-                    from: ['buying'],
-                    to: 'idle',
-                },
-            },
-            context,
-            contextReducer,
-            guards,
-        });
-
         describe('in state: "idle" the "can" function', () => {
             it('should return true for transition "INSERTMONEY"', () => {
-                expect(createVendingMachine('idle').can('INSERTMONEY', { money: 1 })).to.equal(true);
+                expect(createVendorMachine('idle').can('INSERTMONEY', { money: 1 })).to.equal(true);
             });
 
             it('should return false for transition "BUY"', () => {
-                expect(createVendingMachine('idle').can('BUY')).to.equal(false);
+                expect(createVendorMachine('idle').can('BUY')).to.equal(false);
             });
         });
 
         describe('in state: "buying" the "can" function', () => {
             it('should return true for transition "BUY" if guard is satisfied', () => {
-                const guards = { BUY: [passIfCreditIs1OrHigher] };
-                expect(createVendingMachine('buying', { credit: 1 }, guards).can('BUY')).to.equal(true);
+                expect(createVendorMachine('buying', { credit: 1 }).can('BUY')).to.equal(true);
             });
 
             it('should return false for transition "BUY" if guard is not satisfied', () => {
-                const guards = { BUY: [passIfCreditIs1OrHigher] };
-                expect(createVendingMachine('buying', { credit: 0 }, guards).can('BUY')).to.equal(false);
+                expect(createVendorMachine('buying', { credit: 0 }).can('BUY')).to.equal(false);
             });
         });
 
         describe('context accumulation and guard evaluation', () => {
             it('should accumulate the context and evaluate the guards', () => {
-                const guards = { BUY: [passIfCreditIs1OrHigher] };
-                const fsm = createVendingMachine('idle', { credit: 0 }, guards);
+                const fsm = createVendorMachine('idle', { credit: 0 });
 
                 const insertMoney1 = fsm.transition('INSERTMONEY', { money: 0.4 });
                 expect(insertMoney1.stateHasChanged).to.equal(true);
@@ -171,102 +114,8 @@ describe('FSM', () => {
     });
 
     describe('form handling', () => {
-        const initialContext = {
-            values: { email: '', password: '' },
-            warnings: { email: '', password: '' },
-            errors: { email: '', password: '' },
-            validateOnChange: true,
-            validateOnBlur: true,
-        };
-
-        const validate = ({ email, password }) => {
-            const warnings = { email: '', password: '' };
-            const errors = { email: '', password: '' };
-
-            if (!email) errors.email = 'email is required';
-            if (!password) errors.password = 'password is required';
-            if (password && password.length < 5) warnings.password = 'password needs at least 5 characters';
-
-            return { warnings, errors };
-        };
-
-        const reduceValues = (values, { name, value }) => ({ ...values, [name]: value });
-
-        const contextReducer = (currentContext = initialContext, { transition, data }) => {
-            switch (transition) {
-            case 'CHANGE':
-                return {
-                    ...currentContext,
-                    values: reduceValues(currentContext.values, data),
-                    warnings: currentContext.validateOnChange ? {
-                        ...currentContext.warnings,
-                        [data.name]: validate(reduceValues(currentContext.values, data)).warnings[data.name],
-                    } : currentContext.warnings,
-                    errors: currentContext.validateOnChange ? {
-                        ...currentContext.errors,
-                        [data.name]: validate(reduceValues(currentContext.values, data)).errors[data.name],
-                    } : currentContext.errors,
-                };
-            case 'BLUR':
-                return {
-                    ...currentContext,
-                    warnings: currentContext.validateOnBlur ? {
-                        ...currentContext.warnings,
-                        [data.name]: validate(currentContext.values).warnings[data.name],
-                    } : currentContext.warnings,
-                    errors: currentContext.validateOnBlur ? {
-                        ...currentContext.errors,
-                        [data.name]: validate(currentContext.values).errors[data.name],
-                    } : currentContext.errors,
-                };
-            default:
-                return currentContext;
-            }
-        };
-
-        const submitDisabledGuard = (context) => {
-            const hasErrors = Object.values(context.errors).filter(Boolean).length > 0;
-            if (hasErrors) return new Error('submit disabled');
-            return true;
-        };
-
-        const createFormFSM = (initialState, context) => new FSM({
-            initialState,
-            transitions: {
-                CHANGE: {
-                    from: ['idle'],
-                    to: '*',
-                },
-                BLUR: {
-                    from: ['idle'],
-                    to: '*',
-                },
-                SUBMIT: {
-                    from: ['idle'],
-                    to: 'submitting',
-                },
-                RESUBMIT: {
-                    from: ['submit-resolved', 'submit-rejected'],
-                    to: 'submitting',
-                },
-                SUBMIT_RESOLVE: {
-                    from: ['submitting'],
-                    to: 'submit-resolved',
-                },
-                SUBMIT_REJECT: {
-                    from: ['submitting'],
-                    to: 'submit-rejected',
-                },
-            },
-            context,
-            contextReducer,
-            guards: { SUBMIT: [submitDisabledGuard] },
-        });
-
-        const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
-
         it('should call the side effects of a transition', (done) => {
-            const fsm = createFormFSM('idle', initialContext);
+            const fsm = createFormMachine('idle');
 
             fsm.on('SUBMIT', () => {
                 sleep(100).then(() => {
