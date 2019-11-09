@@ -13,6 +13,7 @@
       "arrow-parens": "off",
       "object-curly-newline": "off",
       "newline-per-chained-call": "off",
+      "import/prefer-default-export": "off",
       "import/no-extraneous-dependencies": ["error", {
         "devDependencies": ["./specs/**/*.specs.js", "rollup.config.js"]
       }]

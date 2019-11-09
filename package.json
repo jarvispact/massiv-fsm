@@ -6,7 +6,7 @@
   "module": "dist/massiv-fsm.esm.js",
   "browser": "dist/massiv-fsm.umd.js",
   "scripts": {
-    "test": "mocha --require @babel/register --timeout 10000 ./specs/**/*.specs.js",
+    "test": "mocha --require @babel/register ./specs/**/*.specs.js",
     "clean": "rm -rf ./dist/*",
     "build": "rollup -c",
     "git-add-dist": "git add ./dist/*"

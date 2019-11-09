@@ -82,4 +82,4 @@ const FSM = class {
     }
 };
 
-export { FSM };
+export default FSM;
