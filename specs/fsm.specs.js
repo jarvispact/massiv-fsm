@@ -1,4 +1,7 @@
 /* eslint-disable no-unused-expressions */
+import 'core-js/stable';
+import 'regenerator-runtime/runtime';
+
 import { expect } from 'chai';
 import FSM from '../src/fsm';
 import { createTrafficLightMachine, createVendorMachine, createFormMachine, sleep } from './helper';
@@ -70,15 +73,15 @@ describe('FSM', () => {
         });
 
         describe('context accumulation and guard evaluation', () => {
-            it('should accumulate the context and evaluate the guards', () => {
+            it('should accumulate the context and evaluate the guards', async () => {
                 const fsm = createVendorMachine('idle', { credit: 0 });
 
-                const insertMoney1 = fsm.transition('INSERTMONEY', { money: 0.4 });
+                const insertMoney1 = await fsm.transition('INSERTMONEY', { money: 0.4 });
                 expect(insertMoney1.stateHasChanged).to.equal(true);
                 expect(insertMoney1.newState).to.equal('buying');
                 expect(insertMoney1.context).to.eql({ credit: 0.4 });
 
-                const buy1 = fsm.transition('BUY');
+                const buy1 = await fsm.transition('BUY');
                 expect(buy1.stateHasChanged).to.equal(false);
                 expect(buy1.newState).to.equal(insertMoney1.newState);
                 expect(buy1.context).to.eql(insertMoney1.context);
@@ -86,12 +89,12 @@ describe('FSM', () => {
                 expect(buy1.error.guards[0].message).to.equal('you have not enough credit');
 
 
-                const insertMoney2 = fsm.transition('INSERTMONEY', { money: 0.4 });
+                const insertMoney2 = await fsm.transition('INSERTMONEY', { money: 0.4 });
                 expect(insertMoney2.stateHasChanged).to.equal(false);
                 expect(insertMoney2.newState).to.equal('buying');
                 expect(insertMoney2.context).to.eql({ credit: 0.8 });
 
-                const buy2 = fsm.transition('BUY');
+                const buy2 = await fsm.transition('BUY');
                 expect(buy2.stateHasChanged).to.equal(false);
                 expect(buy2.newState).to.equal(insertMoney2.newState);
                 expect(buy2.context).to.eql(insertMoney2.context);
@@ -99,12 +102,12 @@ describe('FSM', () => {
                 expect(buy2.error.guards[0].message).to.equal('you have not enough credit');
 
 
-                const insertMoney3 = fsm.transition('INSERTMONEY', { money: 0.2 });
+                const insertMoney3 = await fsm.transition('INSERTMONEY', { money: 0.2 });
                 expect(insertMoney3.stateHasChanged).to.equal(false);
                 expect(insertMoney3.newState).to.equal('buying');
                 expect(insertMoney3.context).to.eql({ credit: 1 });
 
-                const buy3 = fsm.transition('BUY');
+                const buy3 = await fsm.transition('BUY');
                 expect(buy3.stateHasChanged).to.equal(true);
                 expect(buy3.newState).to.equal('idle');
                 expect(buy3.context).to.eql(insertMoney3.context);
@@ -114,23 +117,33 @@ describe('FSM', () => {
     });
 
     describe('form machine', () => {
-        it('should call the side effects of a transition', (done) => {
+        it('should call the side effects of a transition', async () => {
             const fsm = createFormMachine('idle');
 
-            fsm.on('SUBMIT', () => {
-                sleep(100).then(() => {
-                    fsm.transition('SUBMIT_RESOLVE', { response: 'hello world' });
-                });
+            fsm.on('SUBMIT', async () => {
+                await sleep(900);
+                await fsm.transition('SUBMIT_RESOLVE', { response: 'hello world' });
+                return { foo: 'bar' };
             });
 
-            const change1 = fsm.transition('CHANGE', { name: 'email', value: '' });
+            fsm.on('SUBMIT', async () => {
+                await sleep(100);
+                return { bar: 'baz' };
+            });
+
+            fsm.on('SUBMIT', async () => {
+                await sleep(400);
+                return { blub: 'bla' };
+            });
+
+            const change1 = await fsm.transition('CHANGE', { name: 'email', value: '' });
             expect(change1.previousState).to.equal('idle');
             expect(change1.newState).to.equal('idle');
             expect(change1.stateHasChanged).to.equal(false);
             expect(change1.context.values.email).to.equal('');
             expect(change1.context.errors.email).to.equal('email is required');
 
-            const change2 = fsm.transition('CHANGE', { name: 'password', value: '' });
+            const change2 = await fsm.transition('CHANGE', { name: 'password', value: '' });
             expect(change2.previousState).to.equal('idle');
             expect(change2.newState).to.equal('idle');
             expect(change2.stateHasChanged).to.equal(false);
@@ -140,7 +153,7 @@ describe('FSM', () => {
             const canSubmit = fsm.can('SUBMIT');
             expect(canSubmit).to.equal(false);
 
-            const change3 = fsm.transition('CHANGE', { name: 'email', value: 'test@test.com' });
+            const change3 = await fsm.transition('CHANGE', { name: 'email', value: 'test@test.com' });
             expect(change3.previousState).to.equal('idle');
             expect(change3.newState).to.equal('idle');
             expect(change3.stateHasChanged).to.equal(false);
@@ -150,7 +163,7 @@ describe('FSM', () => {
             const canSubmit2 = fsm.can('SUBMIT');
             expect(canSubmit2).to.equal(false);
 
-            const change4 = fsm.transition('CHANGE', { name: 'password', value: '1234' });
+            const change4 = await fsm.transition('CHANGE', { name: 'password', value: '1234' });
             expect(change4.previousState).to.equal('idle');
             expect(change4.newState).to.equal('idle');
             expect(change4.stateHasChanged).to.equal(false);
@@ -161,7 +174,7 @@ describe('FSM', () => {
             const canSubmit3 = fsm.can('SUBMIT');
             expect(canSubmit3).to.equal(true);
 
-            const change5 = fsm.transition('CHANGE', { name: 'password', value: '12345' });
+            const change5 = await fsm.transition('CHANGE', { name: 'password', value: '12345' });
             expect(change5.previousState).to.equal('idle');
             expect(change5.newState).to.equal('idle');
             expect(change5.stateHasChanged).to.equal(false);
@@ -172,16 +185,14 @@ describe('FSM', () => {
             const canSubmit4 = fsm.can('SUBMIT');
             expect(canSubmit4).to.equal(true);
 
-            const submitResult = fsm.transition('SUBMIT');
+            const submitResult = await fsm.transition('SUBMIT');
             expect(submitResult.previousState).to.equal('idle');
             expect(submitResult.newState).to.equal('submitting');
             expect(submitResult.stateHasChanged).to.equal(true);
             expect(submitResult.context.values).to.eql({ email: 'test@test.com', password: '12345' });
+            expect(submitResult.subscriberResults).to.eql([{ foo: 'bar' }, { bar: 'baz' }, { blub: 'bla' }]);
 
-            sleep(500).then(() => {
-                expect(fsm.state).to.equal('submit-resolved');
-                done();
-            });
+            expect(fsm.state).to.equal('submit-resolved');
         });
     });
 });

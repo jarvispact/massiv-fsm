@@ -35,9 +35,10 @@
             this.subscribers.push({ name, fn });
         }
 
-        emit(name, data) {
+        async emit(name, data) {
             const subscribers = this.subscribers.filter(s => s.name === name).map(s => s.fn);
-            subscribers.forEach(fn => fn(this.context, data));
+            const results = await Promise.all(subscribers.map(fn => fn(this.context, data)));
+            return results;
         }
 
         reduceContext(name, transitionData) {
@@ -57,7 +58,7 @@
             return fromStatesAllowTransition && !guardsHaveErrors;
         }
 
-        transition(name, data) {
+        async transition(name, data) {
             const newContext = this.reduceContext(name, data);
 
             if (!this.can(name, data)) {
@@ -81,13 +82,14 @@
             this.state = newState;
             this.context = newContext;
 
-            this.emit(name, data);
+            const subscriberResults = await this.emit(name, data);
 
             return {
                 previousState,
                 newState,
                 stateHasChanged,
                 context: this.context,
+                subscriberResults,
             };
         }
     };
