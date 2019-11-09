@@ -8,12 +8,10 @@ Object.defineProperty(exports, '__esModule', { value: true });
 // actions: functions where the result may change the next state
 
 // use-cases
-// traffic light
-// vending machine
 // form state handling
 // fetch api data
 
-const getError = (transitionName, transitionData, guardResults) => {
+const getTransitionError = (transitionName, transitionData, guardResults) => {
     const error = new Error(`error in transition: "${transitionName}"`);
     error.transitionData = transitionData;
     error.guards = guardResults;
@@ -39,39 +37,42 @@ const FSM = class {
         this.guards = guards;
     }
 
+    reduceContext(transitionName, transitionData) {
+        return this.contextReducer
+            ? this.contextReducer(this.context, { transition: transitionName, data: transitionData })
+            : this.context;
+    }
+
     can(transitionName, data) {
         const transition = this.transitions[transitionName];
         if (!transition) throw new Error(`transition "${transitionName}" was not specified`);
         const fromStatesAllowTransition = transition.from.includes(this.state);
 
-        const newContext = this.contextReducer
-            ? this.contextReducer(this.context, { transition: transitionName, data })
-            : this.state;
-
+        const newContext = this.reduceContext(transitionName, data);
         const { guardsHaveErrors } = evaluateGuards(transitionName, data, newContext, this.guards);
 
         return fromStatesAllowTransition && !guardsHaveErrors;
     }
 
     transition(transitionName, data) {
-        const newContext = this.contextReducer
-            ? this.contextReducer(this.context, { transition: transitionName, data })
-            : this.state;
+        const newContext = this.reduceContext(transitionName, data);
 
         if (!this.can(transitionName, data)) {
             const { guardResults, guardsHaveErrors } = evaluateGuards(transitionName, data, newContext, this.guards);
+            const error = guardsHaveErrors ? getTransitionError(transitionName, data, guardResults) : undefined;
 
             return {
                 previousState: this.state,
                 newState: this.state,
                 stateHasChanged: false,
                 context: this.context,
-                error: guardsHaveErrors ? getError(transitionName, data, guardResults) : undefined,
+                error,
             };
         }
 
+        const { to } = this.transitions[transitionName];
         const previousState = this.state;
-        const newState = this.transitions[transitionName].to;
+        const newState = to === '*' ? previousState : to;
         const stateHasChanged = newState !== previousState;
 
         this.state = newState;
