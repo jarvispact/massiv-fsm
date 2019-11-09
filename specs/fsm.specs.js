@@ -169,4 +169,170 @@ describe('FSM', () => {
             });
         });
     });
+
+    describe('form handling', () => {
+        const initialContext = {
+            values: { email: '', password: '' },
+            warnings: { email: '', password: '' },
+            errors: { email: '', password: '' },
+            validateOnChange: true,
+            validateOnBlur: true,
+        };
+
+        const validate = ({ email, password }) => {
+            const warnings = { email: '', password: '' };
+            const errors = { email: '', password: '' };
+
+            if (!email) errors.email = 'email is required';
+            if (!password) errors.password = 'password is required';
+            if (password && password.length < 5) warnings.password = 'password needs at least 5 characters';
+
+            return { warnings, errors };
+        };
+
+        const reduceValues = (values, { name, value }) => ({ ...values, [name]: value });
+
+        const contextReducer = (currentContext = initialContext, { transition, data }) => {
+            switch (transition) {
+            case 'CHANGE':
+                return {
+                    ...currentContext,
+                    values: reduceValues(currentContext.values, data),
+                    warnings: currentContext.validateOnChange ? {
+                        ...currentContext.warnings,
+                        [data.name]: validate(reduceValues(currentContext.values, data)).warnings[data.name],
+                    } : currentContext.warnings,
+                    errors: currentContext.validateOnChange ? {
+                        ...currentContext.errors,
+                        [data.name]: validate(reduceValues(currentContext.values, data)).errors[data.name],
+                    } : currentContext.errors,
+                };
+            case 'BLUR':
+                return {
+                    ...currentContext,
+                    warnings: currentContext.validateOnBlur ? {
+                        ...currentContext.warnings,
+                        [data.name]: validate(currentContext.values).warnings[data.name],
+                    } : currentContext.warnings,
+                    errors: currentContext.validateOnBlur ? {
+                        ...currentContext.errors,
+                        [data.name]: validate(currentContext.values).errors[data.name],
+                    } : currentContext.errors,
+                };
+            default:
+                return currentContext;
+            }
+        };
+
+        const submitDisabledGuard = (context) => {
+            const hasErrors = Object.values(context.errors).filter(Boolean).length > 0;
+            if (hasErrors) return new Error('submit disabled');
+            return true;
+        };
+
+        const createFormFSM = (initialState, context) => new FSM({
+            initialState,
+            transitions: {
+                CHANGE: {
+                    from: ['idle'],
+                    to: '*',
+                },
+                BLUR: {
+                    from: ['idle'],
+                    to: '*',
+                },
+                SUBMIT: {
+                    from: ['idle'],
+                    to: 'submitting',
+                },
+                RESUBMIT: {
+                    from: ['submit-resolved', 'submit-rejected'],
+                    to: 'submitting',
+                },
+                SUBMIT_RESOLVE: {
+                    from: ['submitting'],
+                    to: 'submit-resolved',
+                },
+                SUBMIT_REJECT: {
+                    from: ['submitting'],
+                    to: 'submit-rejected',
+                },
+            },
+            context,
+            contextReducer,
+            guards: { SUBMIT: [submitDisabledGuard] },
+        });
+
+        const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+        it('should call the side effects of a transition', (done) => {
+            const fsm = createFormFSM('idle', initialContext);
+
+            fsm.on('SUBMIT', () => {
+                sleep(100).then(() => {
+                    fsm.transition('SUBMIT_RESOLVE', { response: 'hello world' });
+                });
+            });
+
+            const change1 = fsm.transition('CHANGE', { name: 'email', value: '' });
+            expect(change1.previousState).to.equal('idle');
+            expect(change1.newState).to.equal('idle');
+            expect(change1.stateHasChanged).to.equal(false);
+            expect(change1.context.values.email).to.equal('');
+            expect(change1.context.errors.email).to.equal('email is required');
+
+            const change2 = fsm.transition('CHANGE', { name: 'password', value: '' });
+            expect(change2.previousState).to.equal('idle');
+            expect(change2.newState).to.equal('idle');
+            expect(change2.stateHasChanged).to.equal(false);
+            expect(change2.context.values.password).to.equal('');
+            expect(change2.context.errors.password).to.equal('password is required');
+
+            const canSubmit = fsm.can('SUBMIT');
+            expect(canSubmit).to.equal(false);
+
+            const change3 = fsm.transition('CHANGE', { name: 'email', value: 'test@test.com' });
+            expect(change3.previousState).to.equal('idle');
+            expect(change3.newState).to.equal('idle');
+            expect(change3.stateHasChanged).to.equal(false);
+            expect(change3.context.values.email).to.equal('test@test.com');
+            expect(change3.context.errors.email).to.equal('');
+
+            const canSubmit2 = fsm.can('SUBMIT');
+            expect(canSubmit2).to.equal(false);
+
+            const change4 = fsm.transition('CHANGE', { name: 'password', value: '1234' });
+            expect(change4.previousState).to.equal('idle');
+            expect(change4.newState).to.equal('idle');
+            expect(change4.stateHasChanged).to.equal(false);
+            expect(change4.context.values.password).to.equal('1234');
+            expect(change4.context.warnings.password).to.equal('password needs at least 5 characters');
+            expect(change4.context.errors.password).to.equal('');
+
+            const canSubmit3 = fsm.can('SUBMIT');
+            expect(canSubmit3).to.equal(true);
+
+            const change5 = fsm.transition('CHANGE', { name: 'password', value: '12345' });
+            expect(change5.previousState).to.equal('idle');
+            expect(change5.newState).to.equal('idle');
+            expect(change5.stateHasChanged).to.equal(false);
+            expect(change5.context.values.password).to.equal('12345');
+            expect(change5.context.warnings.password).to.equal('');
+            expect(change5.context.errors.password).to.equal('');
+
+            const canSubmit4 = fsm.can('SUBMIT');
+            expect(canSubmit4).to.equal(true);
+
+            const submitResult = fsm.transition('SUBMIT');
+            expect(submitResult.previousState).to.equal('idle');
+            expect(submitResult.newState).to.equal('submitting');
+            expect(submitResult.stateHasChanged).to.equal(true);
+            expect(submitResult.context.values).to.eql({ email: 'test@test.com', password: '12345' });
+
+            sleep(500).then(() => {
+                expect(fsm.state).to.equal('submit-resolved');
+                done();
+            });
+        });
+    });
 });
