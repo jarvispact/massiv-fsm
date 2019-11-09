@@ -4,7 +4,7 @@ import FSM from '../src/fsm';
 import { createTrafficLightMachine, createVendorMachine, createFormMachine, sleep } from './helper';
 
 describe('FSM', () => {
-    describe('traffic light', () => {
+    describe('trafficlight machine', () => {
         describe('in state: "red" the "can" function', () => {
             it('should return false for transition "RED"', () => {
                 expect(createTrafficLightMachine('red').can('RED')).to.equal(false);
@@ -48,7 +48,7 @@ describe('FSM', () => {
         });
     });
 
-    describe('vending machine', () => {
+    describe('vendor machine', () => {
         describe('in state: "idle" the "can" function', () => {
             it('should return true for transition "INSERTMONEY"', () => {
                 expect(createVendorMachine('idle').can('INSERTMONEY', { money: 1 })).to.equal(true);
@@ -113,7 +113,7 @@ describe('FSM', () => {
         });
     });
 
-    describe('form handling', () => {
+    describe('form machine', () => {
         it('should call the side effects of a transition', (done) => {
             const fsm = createFormMachine('idle');
 
