@@ -1,12 +1,3 @@
-// fetaures
-// context, conditions, side-effects and actions
-// side-effects: functions that will fire and forget (general event emitter ?)
-// actions: functions where the result may change the next state
-
-// use-cases
-// form state handling
-// fetch api data
-
 const getTransitionError = (transitionName, transitionData, guardResults) => {
     const error = new Error(`error in transition: "${transitionName}"`);
     error.transitionData = transitionData;
