@@ -1,21 +1,12 @@
-const getTransitionError = (transitionName, transitionData, guardResults) => {
-    const error = new Error(`error in transition: "${transitionName}"`);
-    error.transitionData = transitionData;
-    error.guards = guardResults;
-    return error;
-};
-
-const evaluateGuards = (transitionName, transitionData, context, fsmGuards) => {
-    const guards = fsmGuards ? fsmGuards[transitionName] || [] : [];
-    const guardResults = guards.map(guard => guard(context, transitionData));
-    const guardsHaveErrors = guardResults.some(result => result instanceof Error);
-    return { guardResults, guardsHaveErrors };
-};
+import validateConfig from './validate-config';
+import evaluateGuards from './evaluate-guards';
+import getTransitionError from './get-transition-error';
 
 const FSM = class {
-    constructor({ initialState, transitions, context, contextReducer, guards } = {}) {
-        if (!initialState) throw new Error('no initialState provided');
-        if (!transitions) throw new Error('no transitions provided');
+    constructor(config) {
+        validateConfig(config);
+
+        const { initialState, transitions, context, contextReducer, guards } = config;
         this.initialState = initialState;
         this.transitions = transitions;
         this.context = context;

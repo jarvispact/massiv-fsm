@@ -1,198 +1,201 @@
-/* eslint-disable no-unused-expressions */
+/* eslint-disable no-unused-expressions, one-var-declaration-per-line */
 import 'core-js/stable';
 import 'regenerator-runtime/runtime';
 
 import { expect } from 'chai';
 import FSM from '../src/fsm';
-import { createTrafficLightMachine, createVendorMachine, createFormMachine, sleep } from './helper';
+import { createTrafficLightMachine, createVendorMachine, createFormMachine, sleep, createSimpleMachine } from './helper';
 
 describe('FSM', () => {
-    describe('trafficlight machine', () => {
-        describe('in state: "red" the "can" function', () => {
-            it('should return false for transition "RED"', () => {
-                expect(createTrafficLightMachine('red').can('RED')).to.equal(false);
-            });
-
-            it('should return false for transition "YELLOW"', () => {
-                expect(createTrafficLightMachine('red').can('YELLOW')).to.equal(false);
-            });
-
-            it('should return false for transition "GREEN"', () => {
-                expect(createTrafficLightMachine('red').can('GREEN')).to.equal(true);
-            });
+    describe('config validation in constructor', () => {
+        it('should throw an validation error if "config" was not provided', () => {
+            expect(() => new FSM()).to.throw(/config is missing in fsm constructor/);
         });
 
-        describe('in state: "yellow" the "can" function', () => {
-            it('should return false for transition "RED"', () => {
-                expect(createTrafficLightMachine('yellow').can('RED')).to.equal(true);
-            });
-
-            it('should return false for transition "YELLOW"', () => {
-                expect(createTrafficLightMachine('yellow').can('YELLOW')).to.equal(false);
-            });
-
-            it('should return false for transition "GREEN"', () => {
-                expect(createTrafficLightMachine('yellow').can('GREEN')).to.equal(false);
-            });
+        it('should throw an validation error if "config.initialState" was not provided', () => {
+            expect(() => new FSM({})).to.throw(/config.initialState is missing in fsm constructor/);
         });
 
-        describe('in state: "green" the "can" function', () => {
-            it('should return false for transition "RED"', () => {
-                expect(createTrafficLightMachine('green').can('RED')).to.equal(false);
-            });
-
-            it('should return false for transition "YELLOW"', () => {
-                expect(createTrafficLightMachine('green').can('YELLOW')).to.equal(true);
-            });
-
-            it('should return false for transition "GREEN"', () => {
-                expect(createTrafficLightMachine('green').can('GREEN')).to.equal(false);
-            });
-        });
-    });
-
-    describe('vendor machine', () => {
-        describe('in state: "idle" the "can" function', () => {
-            it('should return true for transition "INSERTMONEY"', () => {
-                expect(createVendorMachine('idle').can('INSERTMONEY', { money: 1 })).to.equal(true);
-            });
-
-            it('should return false for transition "BUY"', () => {
-                expect(createVendorMachine('idle').can('BUY')).to.equal(false);
-            });
+        it('should throw an validation error if "config.transitions" was not provided', () => {
+            const fsm = () => new FSM({ initialState: 'initialState' });
+            expect(fsm).to.throw(/config.transitions is missing in fsm constructor/);
         });
 
-        describe('in state: "buying" the "can" function', () => {
-            it('should return true for transition "BUY" if guard is satisfied', () => {
-                expect(createVendorMachine('buying', { credit: 1 }).can('BUY')).to.equal(true);
-            });
-
-            it('should return false for transition "BUY" if guard is not satisfied', () => {
-                expect(createVendorMachine('buying', { credit: 0 }).can('BUY')).to.equal(false);
-            });
+        it('should throw an validation error if "config.transitions" has a invalid type', () => {
+            const fsm = () => new FSM({ initialState: 'initialState', transitions: 42 });
+            expect(fsm).to.throw(/config.transitions must be of type "object"/);
         });
 
-        describe('context accumulation and guard evaluation', () => {
-            it('should accumulate the context and evaluate the guards', async () => {
-                const fsm = createVendorMachine('idle', { credit: 0 });
+        it('should throw an validation error if "config.transitions" is a array', () => {
+            const fsm = () => new FSM({ initialState: 'initialState', transitions: [] });
+            expect(fsm).to.throw(/config.transitions must be of type "object"/);
+        });
 
-                const insertMoney1 = await fsm.transition('INSERTMONEY', { money: 0.4 });
-                expect(insertMoney1.stateHasChanged).to.equal(true);
-                expect(insertMoney1.newState).to.equal('buying');
-                expect(insertMoney1.context).to.eql({ credit: 0.4 });
+        it('should throw an validation error if a transition in "config.transitions" has no "from"', () => {
+            const transitions = { ONE: { from: ['two'], to: 'one' }, TWO: { to: 'two' } };
+            const fsm = () => new FSM({ initialState: 'initialState', transitions });
+            expect(fsm).to.throw(/config.transitions\[index\] has no "from" or "to" property/);
+        });
 
-                const buy1 = await fsm.transition('BUY');
-                expect(buy1.stateHasChanged).to.equal(false);
-                expect(buy1.newState).to.equal(insertMoney1.newState);
-                expect(buy1.context).to.eql(insertMoney1.context);
-                expect(buy1.error.guards).to.have.lengthOf(1);
-                expect(buy1.error.guards[0].message).to.equal('you have not enough credit');
+        it('should throw an validation error if a transition in "config.transitions" has no "to"', () => {
+            const transitions = { ONE: { from: ['two'], to: 'one' }, TWO: { from: ['one'] } };
+            const fsm = () => new FSM({ initialState: 'initialState', transitions });
+            expect(fsm).to.throw(/config.transitions\[index\] has no "from" or "to" property/);
+        });
 
+        it('should throw an validation error if a transition in "config.transitions" has no a empty "from"', () => {
+            const transitions = { ONE: { from: ['two'], to: 'one' }, TWO: { from: [], to: 'two' } };
+            const fsm = () => new FSM({ initialState: 'initialState', transitions });
+            expect(fsm).to.throw(/config.transitions\[index\] has no "from" or "to" property/);
+        });
 
-                const insertMoney2 = await fsm.transition('INSERTMONEY', { money: 0.4 });
-                expect(insertMoney2.stateHasChanged).to.equal(false);
-                expect(insertMoney2.newState).to.equal('buying');
-                expect(insertMoney2.context).to.eql({ credit: 0.8 });
+        it('should throw an validation error if "config.context" was provided but no "config.contextReducer" was provided', () => {
+            const fsm = () => new FSM({ initialState: 'initialState', transitions: {}, context: {} });
+            expect(fsm).to.throw(/config.contextReducer is missing in fsm constructor/);
+        });
 
-                const buy2 = await fsm.transition('BUY');
-                expect(buy2.stateHasChanged).to.equal(false);
-                expect(buy2.newState).to.equal(insertMoney2.newState);
-                expect(buy2.context).to.eql(insertMoney2.context);
-                expect(buy2.error.guards).to.have.lengthOf(1);
-                expect(buy2.error.guards[0].message).to.equal('you have not enough credit');
+        it('should throw an validation error if "config.contextReducer" is not a function', () => {
+            const fsm = () => new FSM({ initialState: 'initialState', transitions: {}, context: {}, contextReducer: {} });
+            expect(fsm).to.throw(/config.contextReducer must be of type "function"/);
+        });
 
+        it('should throw an validation error if "config.guards" has a invalid type', () => {
+            const fsm = () => new FSM({ initialState: 'initialState', transitions: {}, guards: 42 });
+            expect(fsm).to.throw(/config.guards must be of type "object"/);
+        });
 
-                const insertMoney3 = await fsm.transition('INSERTMONEY', { money: 0.2 });
-                expect(insertMoney3.stateHasChanged).to.equal(false);
-                expect(insertMoney3.newState).to.equal('buying');
-                expect(insertMoney3.context).to.eql({ credit: 1 });
+        it('should throw an validation error if "config.guards" is a array', () => {
+            const fsm = () => new FSM({ initialState: 'initialState', transitions: {}, guards: [] });
+            expect(fsm).to.throw(/config.guards must be of type "object"/);
+        });
 
-                const buy3 = await fsm.transition('BUY');
-                expect(buy3.stateHasChanged).to.equal(true);
-                expect(buy3.newState).to.equal('idle');
-                expect(buy3.context).to.eql(insertMoney3.context);
-                expect(buy3.error).to.be.undefined;
-            });
+        it('should throw an validation error if a guard in "config.guards[transitionName]" is no array', () => {
+            const guards = { ONE: [], TWO: {} };
+            const fsm = () => new FSM({ initialState: 'initialState', transitions: {}, guards });
+            expect(fsm).to.throw(/config.guards\[index\] is not of type "array"/);
+        });
+
+        it('should throw an validation error if a guard in "config.guards[transitionName][index]" is no function', () => {
+            const guards = { ONE: [], TWO: [{}] };
+            const fsm = () => new FSM({ initialState: 'initialState', transitions: {}, guards });
+            expect(fsm).to.throw(/config.guards\[transitionName\]\[index\] is not of type "function"/);
         });
     });
 
-    describe('form machine', () => {
-        it('should call the side effects of a transition', async () => {
-            const fsm = createFormMachine('idle');
+    describe('fsm event handling', () => {
+        it('should call the subscribers on a transition where the from states match', async () => {
+            const fsm = createSimpleMachine({ initialState: 'one' });
+            let fn1 = false; let fn2 = false; let fn3 = false;
+            fsm.on('TWO', async () => { await sleep(100); fn1 = true; });
+            fsm.on('TWO', async () => { await sleep(100); fn2 = true; });
+            fsm.on('TWO', async () => { await sleep(100); fn3 = true; });
+            await fsm.transition('TWO');
+            expect(fn1).to.equal(true);
+            expect(fn2).to.equal(true);
+            expect(fn3).to.equal(true);
+        });
 
-            fsm.on('SUBMIT', async () => {
-                await sleep(900);
-                await fsm.transition('SUBMIT_RESOLVE', { response: 'hello world' });
-                return { foo: 'bar' };
-            });
+        it('should not call the subscribers on a transition where from states do not match', async () => {
+            const fsm = createSimpleMachine({ initialState: 'two' });
+            let fn1 = false; let fn2 = false; let fn3 = false;
+            fsm.on('THREE', async () => { await sleep(100); fn1 = true; });
+            fsm.on('THREE', async () => { await sleep(100); fn2 = true; });
+            fsm.on('THREE', async () => { await sleep(100); fn3 = true; });
+            await fsm.transition('THREE');
+            expect(fn1).to.equal(false);
+            expect(fn2).to.equal(false);
+            expect(fn3).to.equal(false);
+        });
 
-            fsm.on('SUBMIT', async () => {
-                await sleep(100);
-                return { bar: 'baz' };
-            });
+        it('should not call the subscribers on a transition where the from states match but a guard is not satisfied', async () => {
+            const guards = { TWO: [() => true, () => new Error('guard')] };
+            const fsm = createSimpleMachine({ initialState: 'one', guards });
+            let fn1 = false; let fn2 = false; let fn3 = false;
+            fsm.on('TWO', async () => { await sleep(100); fn1 = true; });
+            fsm.on('TWO', async () => { await sleep(100); fn2 = true; });
+            fsm.on('TWO', async () => { await sleep(100); fn3 = true; });
+            await fsm.transition('TWO');
+            expect(fn1).to.equal(false);
+            expect(fn2).to.equal(false);
+            expect(fn3).to.equal(false);
+        });
+    });
 
-            fsm.on('SUBMIT', async () => {
-                await sleep(400);
-                return { blub: 'bla' };
-            });
+    describe('context and contextReducer', () => {
+        const contextReducer = (context, { transition, data }) => {
+            switch (transition) {
+            case 'TWO':
+                return { ...context, answer: context.answer + data };
+            case 'THREE':
+                return { ...context, answer: context.answer + data };
+            default:
+                return context;
+            }
+        };
 
-            const change1 = await fsm.transition('CHANGE', { name: 'email', value: '' });
-            expect(change1.previousState).to.equal('idle');
-            expect(change1.newState).to.equal('idle');
-            expect(change1.stateHasChanged).to.equal(false);
-            expect(change1.context.values.email).to.equal('');
-            expect(change1.context.errors.email).to.equal('email is required');
+        it('should update the context with the given contextReducer on a successful transition', async () => {
+            const fsm = createSimpleMachine({ initialState: 'one', context: { answer: 40 }, contextReducer });
+            const transitionResult = await fsm.transition('TWO', 2);
+            expect(transitionResult.context).to.eql({ answer: 42 });
+        });
 
-            const change2 = await fsm.transition('CHANGE', { name: 'password', value: '' });
-            expect(change2.previousState).to.equal('idle');
-            expect(change2.newState).to.equal('idle');
-            expect(change2.stateHasChanged).to.equal(false);
-            expect(change2.context.values.password).to.equal('');
-            expect(change2.context.errors.password).to.equal('password is required');
+        it('should not update the context when the transition does not satisfy the "from" states', async () => {
+            const fsm = createSimpleMachine({ initialState: 'two', context: { answer: 39 }, contextReducer });
+            const transitionResult = await fsm.transition('THREE', 2);
+            expect(transitionResult.context).to.eql({ answer: 39 });
+        });
 
-            const canSubmit = fsm.can('SUBMIT');
-            expect(canSubmit).to.equal(false);
+        it('should not update the context when the transition satisfies the "from" states but a guard is not satisfied', async () => {
+            const guards = { TWO: [() => true, () => new Error('guard')] };
+            const fsm = createSimpleMachine({ initialState: 'one', context: { answer: 40 }, contextReducer, guards });
+            const transitionResult = await fsm.transition('TWO', 2);
+            expect(transitionResult.context).to.eql({ answer: 40 });
+        });
+    });
 
-            const change3 = await fsm.transition('CHANGE', { name: 'email', value: 'test@test.com' });
-            expect(change3.previousState).to.equal('idle');
-            expect(change3.newState).to.equal('idle');
-            expect(change3.stateHasChanged).to.equal(false);
-            expect(change3.context.values.email).to.equal('test@test.com');
-            expect(change3.context.errors.email).to.equal('');
+    describe('fsm.can', () => {
+        it('should return true when the transition satisfies the from states', () => {
+            const fsm = createSimpleMachine({ initialState: 'one' });
+            expect(fsm.can('TWO')).to.equal(true);
+            expect(fsm.can('THREE')).to.equal(true);
+        });
 
-            const canSubmit2 = fsm.can('SUBMIT');
-            expect(canSubmit2).to.equal(false);
+        it('should return false when the transition does not satisfy the from states', () => {
+            const fsm = createSimpleMachine({ initialState: 'one' });
+            expect(fsm.can('ONE')).to.equal(false);
+        });
 
-            const change4 = await fsm.transition('CHANGE', { name: 'password', value: '1234' });
-            expect(change4.previousState).to.equal('idle');
-            expect(change4.newState).to.equal('idle');
-            expect(change4.stateHasChanged).to.equal(false);
-            expect(change4.context.values.password).to.equal('1234');
-            expect(change4.context.warnings.password).to.equal('password needs at least 5 characters');
-            expect(change4.context.errors.password).to.equal('');
+        it('should return false when the transition satisfies the from states but a guard is not satisfied', () => {
+            const guards = { TWO: [() => true, () => new Error('guard')] };
+            const fsm = createSimpleMachine({ initialState: 'one', guards });
+            expect(fsm.can('TWO')).to.equal(false);
+        });
+    });
 
-            const canSubmit3 = fsm.can('SUBMIT');
-            expect(canSubmit3).to.equal(true);
+    describe('fsm.transition', () => {
+        it('should return true when the transition satisfies the from states', async () => {
+            const fsm = createSimpleMachine({ initialState: 'one' });
+            const { previousState, newState, stateHasChanged } = await fsm.transition('TWO');
+            expect(previousState).to.equal('one');
+            expect(newState).to.equal('two');
+            expect(stateHasChanged).to.equal(true);
+        });
 
-            const change5 = await fsm.transition('CHANGE', { name: 'password', value: '12345' });
-            expect(change5.previousState).to.equal('idle');
-            expect(change5.newState).to.equal('idle');
-            expect(change5.stateHasChanged).to.equal(false);
-            expect(change5.context.values.password).to.equal('12345');
-            expect(change5.context.warnings.password).to.equal('');
-            expect(change5.context.errors.password).to.equal('');
+        it('should return false when the transition does not satisfy the from states', async () => {
+            const fsm = createSimpleMachine({ initialState: 'one' });
+            const { previousState, newState, stateHasChanged } = await fsm.transition('ONE');
+            expect(previousState).to.equal('one');
+            expect(newState).to.equal('one');
+            expect(stateHasChanged).to.equal(false);
+        });
 
-            const canSubmit4 = fsm.can('SUBMIT');
-            expect(canSubmit4).to.equal(true);
-
-            const submitResult = await fsm.transition('SUBMIT');
-            expect(submitResult.previousState).to.equal('idle');
-            expect(submitResult.newState).to.equal('submitting');
-            expect(submitResult.stateHasChanged).to.equal(true);
-            expect(submitResult.context.values).to.eql({ email: 'test@test.com', password: '12345' });
-            expect(submitResult.subscriberResults).to.eql([{ foo: 'bar' }, { bar: 'baz' }, { blub: 'bla' }]);
-
-            expect(fsm.state).to.equal('submit-resolved');
+        it('should return false when the transition satisfies the from states but a guard is not satisfied', async () => {
+            const guards = { TWO: [() => true, () => new Error('guard')] };
+            const fsm = createSimpleMachine({ initialState: 'one', guards });
+            const { previousState, newState, stateHasChanged } = await fsm.transition('TWO');
+            expect(previousState).to.equal('one');
+            expect(newState).to.equal('one');
+            expect(stateHasChanged).to.equal(false);
         });
     });
 });
