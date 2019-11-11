@@ -1,6 +1,6 @@
 {
   "name": "massiv-fsm",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "a simple fsm implementation",
   "main": "dist/massiv-fsm.cjs.js",
   "module": "dist/massiv-fsm.esm.js",
