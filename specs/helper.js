@@ -4,18 +4,23 @@ export const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
 
 export const createSimpleMachine = ({ initialState, context, contextReducer, guards }) => new FSM({
     initialState,
-    transitions: {
-        ONE: {
-            from: ['two', 'three'],
-            to: 'one',
+    states: {
+        one: {
+            on: {
+                TWO: 'two',
+                THREE: 'three',
+            },
         },
-        TWO: {
-            from: ['one', 'three'],
-            to: 'two',
+        two: {
+            on: {
+                ONE: 'one',
+            },
         },
-        THREE: {
-            from: ['one'],
-            to: 'three',
+        three: {
+            on: {
+                ONE: 'one',
+                THEE: 'three',
+            },
         },
     },
     context,

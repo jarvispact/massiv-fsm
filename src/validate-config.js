@@ -1,17 +1,18 @@
 const isObject = (val) => typeof val === 'object' && !Array.isArray(val);
+const isString = (val) => typeof val === 'string';
 const isFunction = (val) => typeof val === 'function';
-const isValidTransition = (trans = {}) => Array.isArray(trans.from) && trans.from.length && typeof trans.to === 'string';
+const isValidState = (state = {}) => state && isObject(state.on) && Object.keys(state.on).every(key => isString(state.on[key]));
 
 const validateConfig = (config) => {
     if (!config) throw new Error('config is missing in fsm constructor');
 
-    const { initialState, transitions, context, contextReducer, guards } = config;
+    const { initialState, states, context, contextReducer, guards } = config;
     if (!initialState) throw new Error('config.initialState is missing in fsm constructor');
-    if (!transitions) throw new Error('config.transitions is missing in fsm constructor');
+    if (!states) throw new Error('config.states is missing in fsm constructor');
 
-    if (!isObject(transitions)) throw new Error('config.transitions must be of type "object"');
-    if (Object.keys(transitions).some(key => !isValidTransition(transitions[key]))) {
-        throw new Error('config.transitions[index] has no "from" or "to" property');
+    if (!isObject(states)) throw new Error('config.states must be of type "object"');
+    if (Object.keys(states).some(key => !isValidState(states[key]))) {
+        throw new Error('config.states[index] has a invalid format');
     }
 
     if (context && !contextReducer) throw new Error('config.contextReducer is missing in fsm constructor');

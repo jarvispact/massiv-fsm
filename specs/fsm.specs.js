@@ -4,7 +4,7 @@ import 'regenerator-runtime/runtime';
 
 import { expect } from 'chai';
 import FSM from '../src/fsm';
-import { createTrafficLightMachine, createVendorMachine, createFormMachine, sleep, createSimpleMachine } from './helper';
+import { sleep, createSimpleMachine } from './helper';
 
 describe('FSM', () => {
     describe('config validation in constructor', () => {
@@ -16,68 +16,52 @@ describe('FSM', () => {
             expect(() => new FSM({})).to.throw(/config.initialState is missing in fsm constructor/);
         });
 
-        it('should throw an validation error if "config.transitions" was not provided', () => {
+        it('should throw an validation error if "config.states" was not provided', () => {
             const fsm = () => new FSM({ initialState: 'initialState' });
-            expect(fsm).to.throw(/config.transitions is missing in fsm constructor/);
+            expect(fsm).to.throw(/config.states is missing in fsm constructor/);
         });
 
-        it('should throw an validation error if "config.transitions" has a invalid type', () => {
-            const fsm = () => new FSM({ initialState: 'initialState', transitions: 42 });
-            expect(fsm).to.throw(/config.transitions must be of type "object"/);
+        it('should throw an validation error if "config.states" has a invalid type', () => {
+            const fsm = () => new FSM({ initialState: 'initialState', states: 42 });
+            expect(fsm).to.throw(/config.states must be of type "object"/);
         });
 
-        it('should throw an validation error if "config.transitions" is a array', () => {
-            const fsm = () => new FSM({ initialState: 'initialState', transitions: [] });
-            expect(fsm).to.throw(/config.transitions must be of type "object"/);
+        it('should throw an validation error if "config.states" is a array', () => {
+            const fsm = () => new FSM({ initialState: 'initialState', states: [] });
+            expect(fsm).to.throw(/config.states must be of type "object"/);
         });
 
-        it('should throw an validation error if a transition in "config.transitions" has no "from"', () => {
-            const transitions = { ONE: { from: ['two'], to: 'one' }, TWO: { to: 'two' } };
-            const fsm = () => new FSM({ initialState: 'initialState', transitions });
-            expect(fsm).to.throw(/config.transitions\[index\] has no "from" or "to" property/);
-        });
-
-        it('should throw an validation error if a transition in "config.transitions" has no "to"', () => {
-            const transitions = { ONE: { from: ['two'], to: 'one' }, TWO: { from: ['one'] } };
-            const fsm = () => new FSM({ initialState: 'initialState', transitions });
-            expect(fsm).to.throw(/config.transitions\[index\] has no "from" or "to" property/);
-        });
-
-        it('should throw an validation error if a transition in "config.transitions" has no a empty "from"', () => {
-            const transitions = { ONE: { from: ['two'], to: 'one' }, TWO: { from: [], to: 'two' } };
-            const fsm = () => new FSM({ initialState: 'initialState', transitions });
-            expect(fsm).to.throw(/config.transitions\[index\] has no "from" or "to" property/);
-        });
+        // TODO validate states.on better
 
         it('should throw an validation error if "config.context" was provided but no "config.contextReducer" was provided', () => {
-            const fsm = () => new FSM({ initialState: 'initialState', transitions: {}, context: {} });
+            const fsm = () => new FSM({ initialState: 'initialState', states: {}, context: {} });
             expect(fsm).to.throw(/config.contextReducer is missing in fsm constructor/);
         });
 
         it('should throw an validation error if "config.contextReducer" is not a function', () => {
-            const fsm = () => new FSM({ initialState: 'initialState', transitions: {}, context: {}, contextReducer: {} });
+            const fsm = () => new FSM({ initialState: 'initialState', states: {}, context: {}, contextReducer: {} });
             expect(fsm).to.throw(/config.contextReducer must be of type "function"/);
         });
 
         it('should throw an validation error if "config.guards" has a invalid type', () => {
-            const fsm = () => new FSM({ initialState: 'initialState', transitions: {}, guards: 42 });
+            const fsm = () => new FSM({ initialState: 'initialState', states: {}, guards: 42 });
             expect(fsm).to.throw(/config.guards must be of type "object"/);
         });
 
         it('should throw an validation error if "config.guards" is a array', () => {
-            const fsm = () => new FSM({ initialState: 'initialState', transitions: {}, guards: [] });
+            const fsm = () => new FSM({ initialState: 'initialState', states: {}, guards: [] });
             expect(fsm).to.throw(/config.guards must be of type "object"/);
         });
 
         it('should throw an validation error if a guard in "config.guards[transitionName]" is no array', () => {
             const guards = { ONE: [], TWO: {} };
-            const fsm = () => new FSM({ initialState: 'initialState', transitions: {}, guards });
+            const fsm = () => new FSM({ initialState: 'initialState', states: {}, guards });
             expect(fsm).to.throw(/config.guards\[index\] is not of type "array"/);
         });
 
         it('should throw an validation error if a guard in "config.guards[transitionName][index]" is no function', () => {
             const guards = { ONE: [], TWO: [{}] };
-            const fsm = () => new FSM({ initialState: 'initialState', transitions: {}, guards });
+            const fsm = () => new FSM({ initialState: 'initialState', states: {}, guards });
             expect(fsm).to.throw(/config.guards\[transitionName\]\[index\] is not of type "function"/);
         });
     });

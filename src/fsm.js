@@ -5,14 +5,12 @@ import getTransitionError from './get-transition-error';
 const FSM = class {
     constructor(config) {
         validateConfig(config);
-
-        const { initialState, transitions, context, contextReducer, guards } = config;
-        this.initialState = initialState;
-        this.transitions = transitions;
-        this.context = context;
-        this.state = initialState;
-        this.contextReducer = contextReducer;
-        this.guards = guards;
+        this.initialState = config.initialState;
+        this.context = config.context;
+        this.state = config.initialState;
+        this.states = config.states;
+        this.contextReducer = config.contextReducer;
+        this.guards = config.guards;
         this.subscribers = [];
     }
 
@@ -33,9 +31,8 @@ const FSM = class {
     }
 
     can(name, data) {
-        const transition = this.transitions[name];
-        if (!transition) throw new Error(`transition "${name}" was not specified`);
-        const fromStatesAllowTransition = transition.from.includes(this.state);
+        const allowedTransitions = Object.keys(this.states[this.state].on);
+        const fromStatesAllowTransition = allowedTransitions.includes(name);
 
         const newContext = this.reduceContext(name, data);
         const { guardsHaveErrors } = evaluateGuards(name, data, newContext, this.guards);
@@ -59,7 +56,7 @@ const FSM = class {
             };
         }
 
-        const { to } = this.transitions[name];
+        const to = this.states[this.state].on[name];
         const previousState = this.state;
         const newState = to === '*' ? previousState : to;
         const stateHasChanged = newState !== previousState;
